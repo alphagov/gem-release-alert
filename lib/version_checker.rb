@@ -8,42 +8,52 @@ require 'octokit'
 class HttpError < RuntimeError
 end
 
-class GemspecError < RuntimeError
-end
-
 class VersionChecker
-  def fetch_all_govuk_gem_versions
+  def print_version_discrepancies
+    discrepancies_found = false
+
+    fetch_all_govuk_gemspecs.each do |gemspec|
+      rubygems_version = fetch_rubygems_version(gemspec.name)
+      unless gemspec.version == rubygems_version
+        discrepancies_found = true
+        puts "Version mismatch for '#{gemspec.name}':"
+        puts "  Version on RubyGems: #{rubygems_version}"
+        puts "  Version on GitHub: #{gemspec.version}"
+      end
+    end
+
+    unless discrepancies_found
+      puts "No discrepancies found!"
+    end
+  end
+
+  def fetch_all_govuk_gemspecs
     uri = URI("https://docs.publishing.service.gov.uk/gems.json")
     res = Net::HTTP.get_response(uri)
 
     raise HttpError unless res.is_a?(Net::HTTPSuccess)
 
-    parsed_json = JSON.parse(res.body)
-    govuk_gem_names = parsed_json.map { |gem| gem["app_name"] }
-
-    govuk_versions = govuk_gem_names.map { |name| fetch_github_version(name) }.compact
-    rubygems_versions = govuk_gem_names.map { |name| fetch_rubygems_version(name) }.compact
-    puts govuk_versions
-    puts rubygems_versions
+    JSON.parse(res.body)
+      .map { |gem| fetch_gemspec(gem["app_name"]) }
+      .compact
   end
 
-  def fetch_rubygems_version(gemname)
-    uri = URI("https://rubygems.org/api/v1/gems/#{gemname}.json")
+  def fetch_rubygems_version(gem_name)
+    uri = URI("https://rubygems.org/api/v1/gems/#{gem_name}.json")
     res = Net::HTTP.get_response(uri)
 
-    if res.is_a?(Net::HTTPSuccess)
-      parsed_json = JSON.parse(res.body)
-      parsed_json['version']
-    end
+    raise HttpError unless res.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(res.body)['version']
   end
 
-  def fetch_github_version(gemname)
+  def fetch_gemspec(repo_name)
     Dir.mktmpdir do |path|
       Dir.chdir(path) do
-        clone_github_repo(gemname)
-        gemspecs = Dir.glob("*.gemspec", base: gemname)
+        clone_github_repo(repo_name)
+        gemspecs = Dir.glob("*.gemspec", base: repo_name)
         if gemspecs.count == 1
-          Gem::Specification::load("#{gemname}/#{gemspecs.first}").version.to_s
+          Gem::Specification::load("#{repo_name}/#{gemspecs.first}")
         else
           nil
         end
@@ -53,9 +63,5 @@ class VersionChecker
 
   def clone_github_repo(name)
     `git clone --recursive --depth 1 --shallow-submodules git@github.com:alphagov/#{name}.git > /dev/null 2>&1`
-  end
-
-  def rubygems_and_github_match?(gemname)
-    fetch_rubygems_version(gemname) == fetch_github_version(gemname)
   end
 end
