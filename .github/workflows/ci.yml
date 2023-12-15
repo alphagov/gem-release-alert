@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  codeql-sast:
+    name: CodeQL SAST scan
+    uses: alphagov/govuk-infrastructure/.github/workflows/codeql-analysis.yml@main
+    permissions:
+      security-events: write
+
+  dependency-review:
+    name: Dependency Review scan
+    uses: alphagov/govuk-infrastructure/.github/workflows/dependency-review.yml@main
+      
+  test-ruby:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ruby/setup-ruby@v1
+    - name: Install dependencies and run Rake
+      run: |
+        bundle install
+        bundle exec rspec
