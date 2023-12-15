@@ -1,0 +1,24 @@
+name: "Gem Version Checker"
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron:  '00 10 * * 1-5' # Runs at 10:00, Monday through Friday.
+
+jobs:
+  gem-version-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Gem Version Checker
+        id: gem_version_checker
+        run: |
+          bundle exec rake gem_release_alert
+          
