@@ -15,7 +15,7 @@ RSpec.describe VersionChecker do
     stub_rubygems_call('1.2.3')
     stub_files_changed_since_tag(["README.md"])
 
-    expect { subject.print_version_discrepancies }.to output("No discrepancies found!\n").to_stdout
+    expect { subject.print_version_discrepancies }.to output("#platform-security-reliability-team\n\n").to_stdout
   end
 
   it "detects when there are files changed since the last release that are built into the gem" do
@@ -24,7 +24,7 @@ RSpec.describe VersionChecker do
     stub_files_changed_since_tag(["lib/foo.rb"])
 
     expect { subject.print_version_discrepancies }.to output(
-      "example (owned by #platform-security-reliability-team) has unreleased changes since v1.2.2\n"
+      "#platform-security-reliability-team\n  example has unreleased changes since v1.2.2\n"
     ).to_stdout
   end
 
