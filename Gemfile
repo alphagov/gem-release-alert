@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
-source 'https://rubygems.org'
+source "https://rubygems.org"
 
-gem 'octokit'
-gem 'webmock'
-gem 'rake'
+gem "octokit"
+gem "rake"
+gem "webmock"
 
 group :development, :test do
-  gem 'rspec'
+  gem "rspec"
+  gem "rubocop-govuk", require: false
 end
