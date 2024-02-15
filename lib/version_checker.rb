@@ -9,59 +9,52 @@ class HttpError < RuntimeError
 end
 
 class VersionChecker
+  GEMS_API = URI("https://docs.publishing.service.gov.uk/gems.json")
+
   def print_version_discrepancies
-    discrepancies_found = false
+    all_govuk_gems.group_by { |gem| gem["team"] }.each do |team, gems|
+      message = gems.filter_map do |gem|
+        repo_name = gem["app_name"]
+        rubygems_version = fetch_rubygems_version(repo_name)
+        if !rubygems_version.nil? &&
+          files_changed_since_tag(repo_name, "v" + rubygems_version).any? { |path| path_built_into_gem?(path) }
+          "  #{repo_name} has unreleased changes since v#{rubygems_version}"
+        end
+      end.join("\n")
 
-    fetch_all_govuk_gemspecs.each do |gemspec|
-      rubygems_version = fetch_rubygems_version(gemspec.name)
-      unless gemspec.version == rubygems_version
-        discrepancies_found = true
-        puts "Version mismatch for '#{gemspec.name}':"
-        puts "  Version on RubyGems: #{rubygems_version}"
-        puts "  Version on GitHub: #{gemspec.version}"
-      end
-    end
-
-    unless discrepancies_found
-      puts "No discrepancies found!"
+      puts team
+      puts message
     end
   end
 
-  def fetch_all_govuk_gemspecs
-    uri = URI("https://docs.publishing.service.gov.uk/gems.json")
-    res = Net::HTTP.get_response(uri)
-
-    raise HttpError unless res.is_a?(Net::HTTPSuccess)
-
-    JSON.parse(res.body)
-      .map { |gem| fetch_gemspec(gem["app_name"]) }
-      .compact
+  def all_govuk_gems
+    res = Net::HTTP.get_response(GEMS_API)
+    if res.is_a?(Net::HTTPSuccess)
+      JSON.parse(res.body)
+    else
+      raise HttpError
+    end
   end
 
   def fetch_rubygems_version(gem_name)
     uri = URI("https://rubygems.org/api/v1/gems/#{gem_name}.json")
     res = Net::HTTP.get_response(uri)
 
-    raise HttpError unless res.is_a?(Net::HTTPSuccess)
-
-    JSON.parse(res.body)['version']
+    JSON.parse(res.body)['version'] if res.is_a?(Net::HTTPSuccess)
   end
 
-  def fetch_gemspec(repo_name)
+  def files_changed_since_tag(repo, tag)
     Dir.mktmpdir do |path|
       Dir.chdir(path) do
-        clone_github_repo(repo_name)
-        gemspecs = Dir.glob("*.gemspec", base: repo_name)
-        if gemspecs.count == 1
-          Gem::Specification::load("#{repo_name}/#{gemspecs.first}")
-        else
-          nil
+        `git clone --recursive --depth 1 --shallow-submodules --no-single-branch git@github.com:alphagov/#{repo}.git > /dev/null 2>&1`
+        Dir.chdir(repo) do
+          `git diff --name-only #{tag}`.split("\n")
         end
       end
     end
   end
 
-  def clone_github_repo(name)
-    `git clone --recursive --depth 1 --shallow-submodules git@github.com:alphagov/#{name}.git > /dev/null 2>&1`
+  def path_built_into_gem?(path)
+    path.end_with?(".gemspec") || path.start_with?("app/", "lib/")
   end
 end
