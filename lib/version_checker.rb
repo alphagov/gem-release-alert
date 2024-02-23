@@ -46,9 +46,13 @@ class VersionChecker
   def files_changed_since_tag(repo, tag)
     Dir.mktmpdir do |path|
       Dir.chdir(path) do
-        `git clone --recursive --depth 1 --shallow-submodules --no-single-branch git@github.com:alphagov/#{repo}.git > /dev/null 2>&1`
-        Dir.chdir(repo) do
-          `git diff --name-only #{tag}`.split("\n")
+        if system("git clone --recursive --depth 1 --shallow-submodules --no-single-branch https://github.com/alphagov/#{repo}.git > /dev/null 2>&1")
+          Dir.chdir(repo) do
+            `git diff --name-only #{tag}`.split("\n")
+          end
+        else
+          puts "Warning: Failed to clone #{repo}"
+          []
         end
       end
     end
