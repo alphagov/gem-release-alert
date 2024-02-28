@@ -3,7 +3,10 @@ name: "Gem Version Checker"
 on:
   workflow_dispatch: {}
   schedule:
-    - cron:  '00 10 * * 1-5' # Runs at 10:00, Monday through Friday.
+    - cron:  '00 13 * * 3' # Runs at 13:00, Every Wednesday.
+
+env:
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
 jobs:
   gem-version-checker:
