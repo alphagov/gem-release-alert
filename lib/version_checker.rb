@@ -38,7 +38,7 @@ class VersionChecker
       rubygems_version = fetch_rubygems_version(repo_name)
       if !rubygems_version.nil? &&
           files_changed_since_tag(repo_name, "v#{rubygems_version}").any? { |path| path_built_into_gem?(path) }
-        "  <#{repo_url}|#{repo_name}> has unreleased changes since v#{rubygems_version}"
+        "<#{repo_url}|#{repo_name}> has unreleased changes since v#{rubygems_version}"
       end
     }.join("\n")
   end
