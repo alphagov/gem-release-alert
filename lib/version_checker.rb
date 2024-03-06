@@ -4,6 +4,7 @@ require "uri"
 require "net/http"
 require "json"
 require "octokit"
+require "slack/poster"
 
 class HttpError < RuntimeError
 end
@@ -11,20 +12,35 @@ end
 class VersionChecker
   GEMS_API = URI("https://docs.publishing.service.gov.uk/gems.json")
 
+  def slack_options(team)
+    {
+      icon_emoji: ":gem:",
+      username: "Gem Release Bot",
+      channel: team.to_s,
+    }
+  end
+
   def print_version_discrepancies
     all_govuk_gems.group_by { |gem| gem["team"] }.each do |team, gems|
-      message = gems.filter_map { |gem|
-        repo_name = gem["app_name"]
-        rubygems_version = fetch_rubygems_version(repo_name)
-        if !rubygems_version.nil? &&
-            files_changed_since_tag(repo_name, "v#{rubygems_version}").any? { |path| path_built_into_gem?(path) }
-          "  #{repo_name} has unreleased changes since v#{rubygems_version}"
-        end
-      }.join("\n")
+      message = message_builder(gems)
 
-      puts team
-      puts message
+      puts "team: #{team}\n#{message}"
+
+      poster = Slack::Poster.new(ENV["SLACK_WEBHOOK"], slack_options(team))
+      poster.send_message(message.to_s) unless message.empty?
     end
+  end
+
+  def message_builder(gems)
+    gems.filter_map { |gem|
+      repo_name = gem["app_name"]
+      repo_url = gem["links"]["repo_url"]
+      rubygems_version = fetch_rubygems_version(repo_name)
+      if !rubygems_version.nil? &&
+          files_changed_since_tag(repo_name, "v#{rubygems_version}").any? { |path| path_built_into_gem?(path) }
+        "<#{repo_url}|#{repo_name}> has unreleased changes since v#{rubygems_version}"
+      end
+    }.join("\n")
   end
 
   def all_govuk_gems
