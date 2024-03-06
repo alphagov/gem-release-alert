@@ -19,7 +19,6 @@ RSpec.describe VersionChecker do
   end
 
   it "detects when there are no files changed since the last release that are built into the gem" do
-    stub_slack_poster_call_with_no_changes
     stub_devdocs_call
     stub_rubygems_call("1.2.3")
     stub_files_changed_since_tag(["README.md"])
@@ -64,19 +63,5 @@ RSpec.describe VersionChecker do
       body: { "payload" => "{\"icon_emoji\":\":gem:\",\"username\":\"Gem Release Bot\",\"channel\":\"#platform-security-reliability-team\",\"text\":\"<https://example.com|example> has unreleased changes since v1.2.2\"}" },
     )
     .to_return(status: 200)
-  end
-
-  def stub_slack_poster_call_with_no_changes
-    stub_request(:post, "https://slack/webhook")
-         .with(
-           body: { "payload" => "{\"icon_emoji\":\":gem:\",\"username\":\"Gem Release Bot\",\"channel\":\"#platform-security-reliability-team\",\"text\":\"\"}" },
-           headers: {
-             "Accept" => "*/*",
-             "Accept-Encoding" => "gzip;q=1.0,deflate;q=0.6,identity;q=0.3",
-             "Content-Type" => "application/x-www-form-urlencoded",
-             "User-Agent" => "Faraday v2.7.11",
-           },
-         )
-         .to_return(status: 200, body: "", headers: {})
   end
 end

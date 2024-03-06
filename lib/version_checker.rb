@@ -27,7 +27,7 @@ class VersionChecker
       puts "team: #{team}\n#{message}"
 
       poster = Slack::Poster.new(ENV["SLACK_WEBHOOK"], slack_options(team))
-      poster.send_message(message.to_s) unless message.nil?
+      poster.send_message(message.to_s) unless message.empty?
     end
   end
 
