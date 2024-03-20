@@ -75,6 +75,6 @@ class VersionChecker
   end
 
   def path_built_into_gem?(path)
-    path.end_with?(".gemspec") || path.start_with?("app/", "lib/")
+    path.start_with?("app/", "lib/") || path == "CHANGELOG.md"
   end
 end
