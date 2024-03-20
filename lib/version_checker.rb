@@ -36,8 +36,7 @@ class VersionChecker
       repo_name = gem["app_name"]
       repo_url = gem["links"]["repo_url"]
       rubygems_version = fetch_rubygems_version(repo_name)
-      if !rubygems_version.nil? &&
-          files_changed_since_tag(repo_name, "v#{rubygems_version}").any? { |path| path_built_into_gem?(path) }
+      if !rubygems_version.nil? && change_is_significant?(repo_name, rubygems_version)
         "<#{repo_url}|#{repo_name}> has unreleased changes since v#{rubygems_version}"
       end
     }.join("\n")
@@ -74,7 +73,9 @@ class VersionChecker
     end
   end
 
-  def path_built_into_gem?(path)
-    path.start_with?("app/", "lib/") || path == "CHANGELOG.md"
+  def change_is_significant?(repo_name, previous_version)
+    files_changed_since_tag(repo_name, "v#{previous_version}").any? do |path|
+      path.start_with?("app/", "lib/") || path == "CHANGELOG.md"
+    end
   end
 end
